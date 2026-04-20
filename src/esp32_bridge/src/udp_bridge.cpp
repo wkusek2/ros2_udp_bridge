@@ -7,6 +7,8 @@
 #include <arpa/inet.h>
 #include <thread>
 #include <atomic>
+#include <esp32_bridge/msg/imu.hpp>
+#include <cstring>
 
 constexpr int UDP_PORT = 4210;
 constexpr int BUFFER_SIZE = 1024;
@@ -14,7 +16,7 @@ constexpr int BUFFER_SIZE = 1024;
 class UdpBridge : public rclcpp::Node {
 
   private:
-    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr publisher_;
+    rclcpp::Publisher<esp32_bridge::msg::Imu>::SharedPtr publisher_;
     int sock_;
     std::thread recv_thread_;
     std::atomic_bool running_{true};
@@ -24,7 +26,7 @@ class UdpBridge : public rclcpp::Node {
 
     UdpBridge() : Node("UdpBridge") {
       RCLCPP_INFO(this->get_logger(), "Node uruchomiony");
-      publisher_ = this->create_publisher<std_msgs::msg::String>("/esp32/data", 10);
+      publisher_ = this->create_publisher<esp32_bridge::msg::Imu>("/esp32/data", 10);
 
       sock_ = ::socket(AF_INET, SOCK_DGRAM, 0);
       sockaddr_in addr{};
@@ -57,9 +59,15 @@ class UdpBridge : public rclcpp::Node {
         ssize_t n = ::recvfrom(sock_, buf, BUFFER_SIZE-1, 0,
            reinterpret_cast<sockaddr*>(&sender), &sender_len);
         if (n <= 0) continue;
-        buf[n] = '\0';
-        auto msg = std_msgs::msg::String{};
-        msg.data = buf;
+        auto msg = esp32_bridge::msg::Imu{};
+        memcpy(&msg.ax, buf + 0, 4);
+        memcpy(&msg.ay, buf + 4, 4);
+        memcpy(&msg.az, buf + 8, 4);
+        memcpy(&msg.gx, buf + 12, 4);
+        memcpy(&msg.gy, buf + 16, 4);
+        memcpy(&msg.gz, buf + 20, 4);
+        memcpy(&msg.t, buf + 24, 4);
+        memcpy(&msg.ts, buf + 28, 8);
         publisher_->publish(msg);
       }
     }
