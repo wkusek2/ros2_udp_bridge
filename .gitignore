@@ -1,3 +1,5 @@
 build/
 install/
 log/
+notatki/
+src/esp32_bridge/src/stoper_publisher.cpp
